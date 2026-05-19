@@ -30,6 +30,9 @@ import Customers from "../pages/admin/Customers.jsx";
 import Analytics from "../pages/admin/Analytics.jsx";
 import Settings from "../pages/admin/Settings.jsx";
 
+import LanguageToggle from "../components/language/LanguageToggle.jsx";
+import TranslationLayer from "../components/language/TranslationLayer.jsx";
+
 function PublicLayout() {
   return (
     <div className="flex min-h-screen flex-col bg-ms-cream text-ms-dark">
@@ -62,24 +65,29 @@ function PublicLayout() {
 
 export default function AppRoutes() {
   return (
-    <Routes>
-      <Route path="/*" element={<PublicLayout />} />
+    <>
+      <TranslationLayer />
+      <LanguageToggle />
 
-      <Route element={<AdminRoute />}>
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<Dashboard />} />
-          <Route path="products" element={<Products />} />
-          <Route path="products/new" element={<ProductForm />} />
-          <Route path="products/:id/edit" element={<ProductForm />} />
-          <Route path="orders" element={<Orders />} />
-          <Route path="orders/:id" element={<OrderDetails />} />
-          <Route path="offers" element={<Offers />} />
-          <Route path="discount-codes" element={<DiscountCodes />} />
-          <Route path="customers" element={<Customers />} />
-          <Route path="analytics" element={<Analytics />} />
-          <Route path="settings" element={<Settings />} />
+      <Routes>
+        <Route path="/*" element={<PublicLayout />} />
+
+        <Route element={<AdminRoute />}>
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="products" element={<Products />} />
+            <Route path="products/new" element={<ProductForm />} />
+            <Route path="products/:id/edit" element={<ProductForm />} />
+            <Route path="orders" element={<Orders />} />
+            <Route path="orders/:id" element={<OrderDetails />} />
+            <Route path="offers" element={<Offers />} />
+            <Route path="discount-codes" element={<DiscountCodes />} />
+            <Route path="customers" element={<Customers />} />
+            <Route path="analytics" element={<Analytics />} />
+            <Route path="settings" element={<Settings />} />
+          </Route>
         </Route>
-      </Route>
-    </Routes>
+      </Routes>
+    </>
   );
 }

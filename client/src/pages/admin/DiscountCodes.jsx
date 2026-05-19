@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 
 import api from "../../api/axios";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import { formatCurrency } from "../../utils/formatCurrency";
 
 const emptyForm = {
@@ -21,6 +22,7 @@ export default function DiscountCodes() {
 
   const [formData, setFormData] = useState(emptyForm);
   const [editingId, setEditingId] = useState("");
+  const [confirmDialog, setConfirmDialog] = useState(null);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["admin-discount-codes"],
@@ -84,6 +86,7 @@ export default function DiscountCodes() {
     },
     onSuccess: (data) => {
       toast.success(data.message || "Discount email sent");
+      setConfirmDialog(null);
     },
     onError: (error) => {
       toast.error(error.response?.data?.message || "Failed to send discount email");
@@ -97,6 +100,7 @@ export default function DiscountCodes() {
     },
     onSuccess: () => {
       toast.success("Discount code deleted");
+      setConfirmDialog(null);
       queryClient.invalidateQueries({ queryKey: ["admin-discount-codes"] });
     },
     onError: (error) => {
@@ -157,23 +161,11 @@ export default function DiscountCodes() {
   };
 
   const handleDelete = (discountCode) => {
-    const confirmed = window.confirm(
-      `Delete discount code "${discountCode.code}"? This cannot be undone.`
-    );
-
-    if (confirmed) {
-      deleteMutation.mutate(discountCode._id);
-    }
+    setConfirmDialog({ type: "delete", discountCode });
   };
 
   const handleSendEmail = (discountCode) => {
-    const confirmed = window.confirm(
-      `Send discount code "${discountCode.code}" to all registered customers with emails?`
-    );
-
-    if (confirmed) {
-      sendEmailMutation.mutate(discountCode._id);
-    }
+    setConfirmDialog({ type: "send-email", discountCode });
   };
 
   return (
@@ -512,6 +504,44 @@ export default function DiscountCodes() {
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={Boolean(confirmDialog)}
+        title={
+          confirmDialog?.type === "delete"
+            ? "Delete discount code"
+            : "Email discount code"
+        }
+        description={
+          confirmDialog?.type === "delete"
+            ? `Delete discount code "${
+                confirmDialog?.discountCode?.code || "this code"
+              }"? This cannot be undone.`
+            : `Send discount code "${
+                confirmDialog?.discountCode?.code || "this code"
+              }" to all registered customers with emails?`
+        }
+        confirmLabel={
+          confirmDialog?.type === "delete"
+            ? "Delete discount code"
+            : "Send email"
+        }
+        variant={confirmDialog?.type === "delete" ? "danger" : "default"}
+        isLoading={
+          confirmDialog?.type === "delete"
+            ? deleteMutation.isPending
+            : sendEmailMutation.isPending
+        }
+        onClose={() => setConfirmDialog(null)}
+        onConfirm={() => {
+          if (confirmDialog?.type === "delete") {
+            deleteMutation.mutate(confirmDialog.discountCode._id);
+            return;
+          }
+
+          sendEmailMutation.mutate(confirmDialog.discountCode._id);
+        }}
+      />
     </div>
   );
 }

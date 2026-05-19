@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 
 import api from "../../api/axios";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import { formatCurrency } from "../../utils/formatCurrency";
 
 const emptyForm = {
@@ -21,6 +22,7 @@ export default function Offers() {
 
   const [formData, setFormData] = useState(emptyForm);
   const [editingId, setEditingId] = useState("");
+  const [confirmDialog, setConfirmDialog] = useState(null);
 
   const {
     data: offersData,
@@ -105,6 +107,7 @@ export default function Offers() {
     },
     onSuccess: () => {
       toast.success("Offer deleted successfully");
+      setConfirmDialog(null);
       queryClient.invalidateQueries({ queryKey: ["admin-offers"] });
       queryClient.invalidateQueries({ queryKey: ["active-offer"] });
     },
@@ -120,6 +123,7 @@ export default function Offers() {
   },
   onSuccess: (data) => {
     toast.success(data.message || "Offer email sent");
+    setConfirmDialog(null);
   },
   onError: (error) => {
     toast.error(error.response?.data?.message || "Failed to send offer email");
@@ -198,23 +202,11 @@ export default function Offers() {
   };
 
   const handleDelete = (offer) => {
-    const confirmed = window.confirm(
-      `Delete offer "${offer.title}"? This cannot be undone.`
-    );
-
-    if (confirmed) {
-      deleteMutation.mutate(offer._id);
-    }
+    setConfirmDialog({ type: "delete", offer });
   };
 
   const handleSendEmail = (offer) => {
-  const confirmed = window.confirm(
-    `Send offer "${offer.title}" to all registered customers with emails?`
-  );
-
-  if (confirmed) {
-    sendEmailMutation.mutate(offer._id);
-  }
+  setConfirmDialog({ type: "send-email", offer });
 };
 
   useEffect(() => {
@@ -498,6 +490,40 @@ export default function Offers() {
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={Boolean(confirmDialog)}
+        title={
+          confirmDialog?.type === "delete" ? "Delete offer" : "Email offer"
+        }
+        description={
+          confirmDialog?.type === "delete"
+            ? `Delete offer "${
+                confirmDialog?.offer?.title || "this offer"
+              }"? This cannot be undone.`
+            : `Send offer "${
+                confirmDialog?.offer?.title || "this offer"
+              }" to all registered customers with emails?`
+        }
+        confirmLabel={
+          confirmDialog?.type === "delete" ? "Delete offer" : "Send email"
+        }
+        variant={confirmDialog?.type === "delete" ? "danger" : "default"}
+        isLoading={
+          confirmDialog?.type === "delete"
+            ? deleteMutation.isPending
+            : sendEmailMutation.isPending
+        }
+        onClose={() => setConfirmDialog(null)}
+        onConfirm={() => {
+          if (confirmDialog?.type === "delete") {
+            deleteMutation.mutate(confirmDialog.offer._id);
+            return;
+          }
+
+          sendEmailMutation.mutate(confirmDialog.offer._id);
+        }}
+      />
     </div>
   );
 }

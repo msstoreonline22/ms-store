@@ -14,6 +14,76 @@ const {
   sendOrderStatusUpdateEmailToCustomer,
 } = require("../services/emailService");
 
+const allowedStatuses = [
+  "pending",
+  "confirmed",
+  "preparing",
+  "out_for_delivery",
+  "delivered",
+  "cancelled",
+];
+
+const getOrderStockUpdates = (order, direction) => {
+  return order.items
+    .map((item) => {
+      const quantity = Number(item.quantity || 0);
+
+      if (!item.product || quantity <= 0) return null;
+
+      return {
+        updateOne: {
+          filter: { _id: item.product },
+          update: { $inc: { stock: direction * quantity } },
+        },
+      };
+    })
+    .filter(Boolean);
+};
+
+const restoreOrderStock = async (order) => {
+  if (!order || order.stockRestored) return false;
+
+  const updates = getOrderStockUpdates(order, 1);
+
+  if (updates.length) {
+    await Product.bulkWrite(updates);
+  }
+
+  order.stockRestored = true;
+  return true;
+};
+
+const reserveOrderStock = async (order) => {
+  if (!order || !order.stockRestored) return false;
+
+  for (const item of order.items) {
+    const quantity = Number(item.quantity || 0);
+
+    if (quantity <= 0) continue;
+
+    const product = await Product.findById(item.product);
+
+    if (!product) {
+      throw new Error(`${item.name || "Product"} no longer exists`);
+    }
+
+    if (product.stock < quantity) {
+      throw new Error(
+        `${product.name} only has ${product.stock} left in stock`
+      );
+    }
+  }
+
+  const updates = getOrderStockUpdates(order, -1);
+
+  if (updates.length) {
+    await Product.bulkWrite(updates);
+  }
+
+  order.stockRestored = false;
+  return true;
+};
+
 const createOrder = async (req, res) => {
   try {
     const {
@@ -284,15 +354,6 @@ const updateOrderStatus = async (req, res) => {
   try {
     const { status, adminNote } = req.body;
 
-    const allowedStatuses = [
-      "pending",
-      "confirmed",
-      "preparing",
-      "out_for_delivery",
-      "delivered",
-      "cancelled",
-    ];
-
     if (!allowedStatuses.includes(status)) {
       return res.status(400).json({
         success: false,
@@ -311,6 +372,21 @@ const updateOrderStatus = async (req, res) => {
 
     const oldStatus = order.status;
     const statusChanged = oldStatus !== status;
+
+    if (status === "cancelled") {
+      await restoreOrderStock(order);
+    }
+
+    if (oldStatus === "cancelled" && status !== "cancelled") {
+      try {
+        await reserveOrderStock(order);
+      } catch (stockError) {
+        return res.status(400).json({
+          success: false,
+          message: stockError.message,
+        });
+      }
+    }
 
     order.status = status;
 
@@ -341,6 +417,38 @@ const updateOrderStatus = async (req, res) => {
   }
 };
 
+const deleteAdminOrder = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    const stockRestored = await restoreOrderStock(order);
+
+    await order.deleteOne();
+
+    res.json({
+      success: true,
+      message: stockRestored
+        ? "Order deleted and stock restored"
+        : "Order deleted successfully",
+      stockRestored,
+    });
+  } catch (error) {
+    console.error("Delete order error:", error.message);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete order",
+    });
+  }
+};
+
 module.exports = {
   createOrder,
   getOrderByNumber,
@@ -348,4 +456,5 @@ module.exports = {
   getAdminOrders,
   getAdminOrderById,
   updateOrderStatus,
+  deleteAdminOrder,
 };

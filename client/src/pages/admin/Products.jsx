@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 
 import api from "../../api/axios";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import { formatCurrency } from "../../utils/formatCurrency";
 import { getImageUrl } from "../../utils/getImageUrl";
 
@@ -13,6 +14,7 @@ export default function Products() {
 
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
+  const [productToDelete, setProductToDelete] = useState(null);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["admin-products", search, status],
@@ -62,6 +64,7 @@ export default function Products() {
     },
     onSuccess: () => {
       toast.success("Product deleted successfully");
+      setProductToDelete(null);
       queryClient.invalidateQueries({ queryKey: ["admin-products"] });
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["featured-products"] });
@@ -73,13 +76,7 @@ export default function Products() {
   });
 
   const handleDelete = (product) => {
-    const confirmed = window.confirm(
-      `Are you sure you want to delete "${product.name}"? This cannot be undone.`
-    );
-
-    if (confirmed) {
-      deleteMutation.mutate(product._id);
-    }
+    setProductToDelete(product);
   };
 
   return (
@@ -339,6 +336,19 @@ export default function Products() {
         </div>
         </>
       )}
+
+      <ConfirmDialog
+        open={Boolean(productToDelete)}
+        title="Delete product"
+        description={`Are you sure you want to delete "${
+          productToDelete?.name || "this product"
+        }"? This cannot be undone.`}
+        confirmLabel="Delete product"
+        variant="danger"
+        isLoading={deleteMutation.isPending}
+        onClose={() => setProductToDelete(null)}
+        onConfirm={() => deleteMutation.mutate(productToDelete._id)}
+      />
     </div>
   );
 }

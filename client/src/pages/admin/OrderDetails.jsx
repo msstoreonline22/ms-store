@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Save } from "lucide-react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, Save, Trash2 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 
 import api from "../../api/axios";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import { formatCurrency } from "../../utils/formatCurrency";
 import { getImageUrl } from "../../utils/getImageUrl";
 import {
@@ -15,10 +16,12 @@ import {
 
 export default function OrderDetails() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const [status, setStatus] = useState("");
   const [adminNote, setAdminNote] = useState("");
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const {
     data: order,
@@ -56,6 +59,27 @@ export default function OrderDetails() {
       toast.error(error.response?.data?.message || "Failed to update order");
     },
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      const res = await api.delete(`/orders/admin/${id}`);
+      return res.data;
+    },
+    onSuccess: (data) => {
+      toast.success(data.message || "Order deleted successfully");
+      setShowDeleteDialog(false);
+      queryClient.invalidateQueries({ queryKey: ["admin-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-overview"] });
+      navigate("/admin/orders");
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.message || "Failed to delete order");
+    },
+  });
+
+  const handleDelete = () => {
+    setShowDeleteDialog(true);
+  };
 
   if (isLoading) {
     return <p className="text-ms-muted">Loading order...</p>;
@@ -250,6 +274,24 @@ export default function OrderDetails() {
             </div>
           </div>
 
+          <div className="rounded-[2rem] border border-red-100 bg-red-50 p-6 shadow-sm">
+            <h3 className="text-xl font-black text-red-800">Delete order</h3>
+            <p className="mt-2 text-sm leading-6 text-red-700">
+              This permanently removes the order. Stock will be restored
+              automatically if it has not already been restored.
+            </p>
+
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={deleteMutation.isPending}
+              className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-red-700 px-6 py-4 text-sm font-black text-white transition hover:bg-red-800 disabled:cursor-not-allowed disabled:bg-red-300"
+            >
+              <Trash2 size={17} />
+              {deleteMutation.isPending ? "Deleting..." : "Delete order"}
+            </button>
+          </div>
+
           <div className="rounded-[2rem] border border-ms-border bg-white p-6 shadow-sm">
             <h3 className="text-xl font-black text-ms-navy">Payment</h3>
 
@@ -280,6 +322,17 @@ export default function OrderDetails() {
           </div>
         </aside>
       </div>
+
+      <ConfirmDialog
+        open={showDeleteDialog}
+        title="Delete order"
+        description={`Delete order ${order.orderNumber}? Stock will be restored automatically if needed.`}
+        confirmLabel="Delete order"
+        variant="danger"
+        isLoading={deleteMutation.isPending}
+        onClose={() => setShowDeleteDialog(false)}
+        onConfirm={() => deleteMutation.mutate()}
+      />
     </div>
   );
 }

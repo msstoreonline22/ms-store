@@ -210,6 +210,11 @@ discountCode: {
       default: "pending",
     },
 
+    stockRestored: {
+      type: Boolean,
+      default: false,
+    },
+
     adminNote: {
       type: String,
       default: "",

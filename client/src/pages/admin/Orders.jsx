@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Eye, Search } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { Eye, Search, Trash2 } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 
 import api from "../../api/axios";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import { formatCurrency } from "../../utils/formatCurrency";
 import {
   ORDER_STATUSES,
@@ -12,8 +14,10 @@ import {
 } from "../../utils/constants";
 
 export default function Orders() {
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
+  const [orderToDelete, setOrderToDelete] = useState(null);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["admin-orders", status, search],
@@ -34,6 +38,26 @@ export default function Orders() {
   });
 
   const orders = data || [];
+
+  const deleteMutation = useMutation({
+    mutationFn: async (orderId) => {
+      const res = await api.delete(`/orders/admin/${orderId}`);
+      return res.data;
+    },
+    onSuccess: (data) => {
+      toast.success(data.message || "Order deleted successfully");
+      setOrderToDelete(null);
+      queryClient.invalidateQueries({ queryKey: ["admin-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-overview"] });
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.message || "Failed to delete order");
+    },
+  });
+
+  const handleDelete = (order) => {
+    setOrderToDelete(order);
+  };
 
   const totalRevenue = useMemo(() => {
     return orders
@@ -155,13 +179,25 @@ export default function Orders() {
                   <OrderInfo label="Payment" value={order.paymentMethod} />
                 </div>
 
-                <Link
-                  to={`/admin/orders/${order._id}`}
-                  className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-ms-navy px-5 py-3 text-sm font-black text-white transition hover:bg-ms-blue"
-                >
-                  <Eye size={17} />
-                  View order
-                </Link>
+                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                  <Link
+                    to={`/admin/orders/${order._id}`}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-ms-navy px-5 py-3 text-sm font-black text-white transition hover:bg-ms-blue"
+                  >
+                    <Eye size={17} />
+                    View order
+                  </Link>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(order)}
+                    disabled={deleteMutation.isPending}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-red-200 bg-red-50 px-5 py-3 text-sm font-black text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <Trash2 size={17} />
+                    Delete order
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -219,7 +255,8 @@ export default function Orders() {
                       {new Date(order.createdAt).toLocaleDateString("en-EG")}
                     </td>
 
-                    <td className="px-5 py-4 text-right">
+                    <td className="px-5 py-4">
+                      <div className="flex justify-end gap-2">
                       <Link
                         to={`/admin/orders/${order._id}`}
                         className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-ms-navy text-white transition hover:bg-ms-blue"
@@ -227,6 +264,17 @@ export default function Orders() {
                       >
                         <Eye size={17} />
                       </Link>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(order)}
+                        disabled={deleteMutation.isPending}
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                        aria-label="Delete order"
+                      >
+                        <Trash2 size={17} />
+                      </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -236,6 +284,19 @@ export default function Orders() {
         </div>
         </>
       )}
+
+      <ConfirmDialog
+        open={Boolean(orderToDelete)}
+        title="Delete order"
+        description={`Delete order ${
+          orderToDelete?.orderNumber || ""
+        }? Stock will be restored automatically if needed.`}
+        confirmLabel="Delete order"
+        variant="danger"
+        isLoading={deleteMutation.isPending}
+        onClose={() => setOrderToDelete(null)}
+        onConfirm={() => deleteMutation.mutate(orderToDelete._id)}
+      />
     </div>
   );
 }

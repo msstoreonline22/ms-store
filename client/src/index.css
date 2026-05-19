@@ -61,3 +61,36 @@ img {
   background: #0b1f3a;
   color: #ffffff;
 }
+
+html[dir="rtl"] body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+html[dir="rtl"] .text-left {
+  text-align: right;
+}
+
+html[dir="rtl"] .text-right {
+  text-align: left;
+}
+
+html[dir="rtl"] input,
+html[dir="rtl"] textarea,
+html[dir="rtl"] select {
+  text-align: right;
+}
+
+html[dir="rtl"] input[type="email"],
+html[dir="rtl"] input[type="password"],
+html[dir="rtl"] input[type="url"],
+html[dir="rtl"] input[type="number"] {
+  direction: ltr;
+  text-align: left;
+}
+
+html[dir="rtl"] .tracking-\[0\.18em\],
+html[dir="rtl"] .tracking-\[0\.2em\],
+html[dir="rtl"] .tracking-\[0\.22em\],
+html[dir="rtl"] .tracking-\[0\.25em\] {
+  letter-spacing: 0.04em;
+}

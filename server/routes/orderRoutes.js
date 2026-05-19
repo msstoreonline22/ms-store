@@ -7,6 +7,7 @@ const {
   getAdminOrders,
   getAdminOrderById,
   updateOrderStatus,
+  deleteAdminOrder,
 } = require("../controllers/orderController");
 
 const { protect, optionalProtect } = require("../middleware/authMiddleware");
@@ -21,5 +22,6 @@ router.get("/track/:orderNumber", getOrderByNumber);
 router.get("/admin", protect, adminOnly, getAdminOrders);
 router.get("/admin/:id", protect, adminOnly, getAdminOrderById);
 router.put("/admin/:id/status", protect, adminOnly, updateOrderStatus);
+router.delete("/admin/:id", protect, adminOnly, deleteAdminOrder);
 
 module.exports = router;

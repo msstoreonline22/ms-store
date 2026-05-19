@@ -10,6 +10,14 @@ dotenv.config();
 
 const defaultSizes = ["M", "L", "XL"];
 
+const createSlug = (name) => {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+};
+
 const products = [
   {
     name: "17 Shirt",
@@ -93,7 +101,7 @@ const products = [
     sizes: defaultSizes,
     stock: 10,
     category: "T-Shirts",
-    badge: "Best Seller",
+    badge: "",
     isFeatured: true,
     isActive: true,
   },
@@ -164,12 +172,15 @@ const products = [
     description:
       "Oversized black t-shirt with a clean streetwear fit and premium everyday feel.",
     price: 500,
-    images: ["/images/products/oversized-black-1.webp"],
+    images: [
+      "/images/products/oversized-black-1.webp",
+      "/images/products/oversized-black-2.webp",
+    ],
     colors: [],
     sizes: defaultSizes,
     stock: 10,
     category: "T-Shirts",
-    badge: "New Drop",
+    badge: "",
     isFeatured: true,
     isActive: true,
   },
@@ -183,7 +194,24 @@ const products = [
     sizes: defaultSizes,
     stock: 10,
     category: "T-Shirts",
-    badge: "New Drop",
+    badge: "",
+    isFeatured: true,
+    isActive: true,
+  },
+  {
+    name: "Oversized White",
+    description:
+      "Oversized white t-shirt with a clean streetwear fit and premium everyday feel.",
+    price: 500,
+    images: [
+      "/images/products/oversized-white-1.webp",
+      "/images/products/oversized-white-2.webp",
+    ],
+    colors: [],
+    sizes: defaultSizes,
+    stock: 10,
+    category: "T-Shirts",
+    badge: "",
     isFeatured: true,
     isActive: true,
   },
@@ -212,20 +240,12 @@ const seedData = async () => {
       role: "admin",
     });
 
-    const createSlug = (name) => {
-  return name
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-};
+    const productsWithSlugs = products.map((product) => ({
+      ...product,
+      slug: createSlug(product.name),
+    }));
 
-const productsWithSlugs = products.map((product) => ({
-  ...product,
-  slug: createSlug(product.name),
-}));
-
-await Product.insertMany(productsWithSlugs);
+    await Product.insertMany(productsWithSlugs);
 
     await Settings.create({
       brandName: "MS Store Egypt",
